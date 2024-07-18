@@ -99,7 +99,8 @@ internal class TimerDatabase
         {
             object modelClass = Activator.CreateInstance(model)!;
             var query = BuildCreateTable(modelClass);
-            Console.WriteLine(query + ");");
+            var task = Task.Run(() => Write(query));
+            task.Wait();
         }
     }
 
@@ -160,8 +161,7 @@ internal class TimerDatabase
                         var decimalReference = property.GetCustomAttributes(typeof(DecimalValidator), false);
                         if (decimalReference.Length == 0)
                         {
-                            Console.WriteLine($"ERROR: Decimal Validator is missing!");
-                            throw new ValidationException();
+                            throw new ValidationException("Decimal Validator is missing!");
                         }
                         var decimalValues = decimalReference.Cast<DecimalValidator>().Single();
                         propertyString += $"DECIMAL({decimalValues.MaxDigits}, {decimalValues.NumberOfDigits}) ";
@@ -224,6 +224,6 @@ internal class TimerDatabase
             createTableQuery += ", " + String.Join(", ", foreignKeys);
         }
 
-        return createTableQuery;
+        return createTableQuery + ");";
     }
 }
