@@ -1,5 +1,5 @@
 ﻿/*
-                      ___  _____  _________  ___ 
+                      ___  _____  _________  ___
                      ___  /  _/ |/ / __/ _ \/ _ |
                     ___  _/ //    / _// , _/ __ |
                    ___  /___/_/|_/_/ /_/|_/_/ |_|
@@ -99,18 +99,20 @@ public partial class SurfTimer : BasePlugin
                                     dbConfig.GetProperty("port").GetInt32(),
                                     dbConfig.GetProperty("timeout").GetInt32());
             Console.WriteLine("[CS2 Surf] Database connection established.");
+            DB.InitDb();
+            Console.WriteLine("[CS2 Surf] Database initialized.");
         }
 
         catch (Exception e)
         {
             Console.WriteLine($"[CS2 Surf] Error loading database config: {e.Message}");
-            // To-do: Abort plugin loading
+            throw new Exception("[CS2 Surf] Error loading Database!");
         }
 
         Console.WriteLine(String.Format("  ____________    ____         ___\n"
                                     + " / ___/ __/_  |  / __/_ ______/ _/\n"
                                     + "/ /___\\ \\/ __/  _\\ \\/ // / __/ _/ \n"
-                                    + "\\___/___/____/ /___/\\_,_/_/ /_/\n"  
+                                    + "\\___/___/____/ /___/\\_,_/_/ /_/\n"
                                     + $"[CS2 Surf] SurfTimer plugin loaded. Version: {ModuleVersion}"
                                     + $"[CS2 Surf] This plugin is licensed under the GNU Affero General Public License v3.0. See LICENSE for more information. Source code: https://github.com/CS2Surf/Timer\n"
         ));
