@@ -33,18 +33,18 @@ internal class ReplayPlayer
 
     public CCSPlayerController? Controller { get; set; }
 
-    public void ResetReplay() 
+    public void ResetReplay()
     {
         this.CurrentFrameTick = 0;
         this.FrameTickIncrement = 1;
-        if(this.RepeatCount > 0)
+        if (this.RepeatCount > 0)
             this.RepeatCount--;
 
         this.Stat_IsRunning = false;
         this.Stat_RunTick = 0;
     }
 
-    public void Reset() 
+    public void Reset()
     {
         this.IsPlaying = false;
         this.IsPaused = false;
@@ -65,7 +65,7 @@ internal class ReplayPlayer
         this.IsPlayable = true;
     }
 
-    public void Start() 
+    public void Start()
     {
         if (!this.IsPlayable)
             return;
@@ -73,12 +73,12 @@ internal class ReplayPlayer
         this.IsPlaying = true;
     }
 
-    public void Stop() 
+    public void Stop()
     {
         this.IsPlaying = false;
     }
 
-    public void Pause() 
+    public void Pause()
     {
         if (!this.IsPlaying)
             return;
@@ -87,7 +87,7 @@ internal class ReplayPlayer
         this.Stat_IsRunning = !this.Stat_IsRunning;
     }
 
-    public void Tick() 
+    public void Tick()
     {
         if (!this.IsPlaying || !this.IsPlayable || this.Frames.Count == 0)
             return;
@@ -116,7 +116,8 @@ internal class ReplayPlayer
             else if (current_frame.Situation == (uint)ReplayFrameSituation.END_RUN)
             {
                 this.Stat_IsRunning = true;
-                this.Stat_RunTick = this.CurrentFrameTick - (64*2); // (64*2) counts for the 2 seconds before run actually starts
+                this.Stat_RunTick =
+                    this.CurrentFrameTick - (64 * 2); // (64*2) counts for the 2 seconds before run actually starts
             }
         }
         // END OF BLASPHEMY
@@ -133,10 +134,10 @@ internal class ReplayPlayer
             this.Controller.PlayerPawn.Value.MoveType = MoveType_t.MOVETYPE_NOCLIP;
 
         if ((current_pos - current_frame.Pos).Length() > 200)
-                this.Controller.PlayerPawn.Value.Teleport(current_frame.Pos, current_frame.Ang, new Vector(nint.Zero));
-            else
-                this.Controller.PlayerPawn.Value.Teleport(new Vector(nint.Zero), current_frame.Ang, velocity);
-                
+            this.Controller.PlayerPawn.Value.Teleport(current_frame.Pos, current_frame.Ang, new Vector(nint.Zero));
+        else
+            this.Controller.PlayerPawn.Value.Teleport(new Vector(nint.Zero), current_frame.Ang, velocity);
+
 
         if (!this.IsPaused)
         {
@@ -145,11 +146,11 @@ internal class ReplayPlayer
                 this.Stat_RunTick = Math.Max(0, this.Stat_RunTick + this.FrameTickIncrement);
         }
 
-        if(this.CurrentFrameTick >= this.Frames.Count) 
+        if (this.CurrentFrameTick >= this.Frames.Count)
             this.ResetReplay();
     }
 
-    public void LoadReplayData(TimerDatabase DB) 
+    public void LoadReplayData(TimerDatabase DB)
     {
         if (!this.IsPlayable)
             return;
@@ -162,14 +163,16 @@ internal class ReplayPlayer
         ");
 
         MySqlDataReader mapTimeReplay = dbTask.Result;
-        if(!mapTimeReplay.HasRows) 
+        if (!mapTimeReplay.HasRows)
         {
-            Console.WriteLine($"CS2 Surf DEBUG >> internal class PlayerReplay -> Load -> No replay data found for Player.");
+            Console.WriteLine(
+                $"CS2 Surf DEBUG >> internal class PlayerReplay -> Load -> No replay data found for Player.");
         }
-        else 
+        else
         {
-            JsonSerializerOptions options = new JsonSerializerOptions {WriteIndented = false, Converters = { new VectorConverter(), new QAngleConverter() }};
-            while(mapTimeReplay.Read()) 
+            JsonSerializerOptions options = new JsonSerializerOptions
+                { WriteIndented = false, Converters = { new VectorConverter(), new QAngleConverter() } };
+            while (mapTimeReplay.Read())
             {
                 string json = Compressor.Decompress(Encoding.UTF8.GetString((byte[])mapTimeReplay[0]));
                 this.Frames = JsonSerializer.Deserialize<List<ReplayFrame>>(json, options)!;
@@ -177,8 +180,10 @@ internal class ReplayPlayer
                 this.Stat_RunTime = mapTimeReplay.GetInt32("run_time");
                 this.Stat_PlayerName = mapTimeReplay.GetString("name");
             }
+
             FormatBotName();
         }
+
         mapTimeReplay.Close();
         dbTask.Dispose();
     }
@@ -188,10 +193,11 @@ internal class ReplayPlayer
         if (!this.IsPlayable)
             return;
 
-        SchemaString<CBasePlayerController> bot_name = new SchemaString<CBasePlayerController>(this.Controller!, "m_iszPlayerName");
+        SchemaString<CBasePlayerController> bot_name =
+            new SchemaString<CBasePlayerController>(this.Controller!, "m_iszPlayerName");
 
         string replay_name = $"[{this.Stat_Prefix}] {this.Stat_PlayerName} | {PlayerHUD.FormatTime(this.Stat_RunTime)}";
-        if(this.Stat_RunTime <= 0)
+        if (this.Stat_RunTime <= 0)
             replay_name = $"[{this.Stat_Prefix}] {this.Stat_PlayerName}";
 
         bot_name.Set(replay_name);
