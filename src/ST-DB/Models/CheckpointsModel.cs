@@ -13,6 +13,9 @@ public class CheckpointsModel
     [IndexValidator]
     public Byte cp { get; set; }
     
+    [CommentValidator("start_touch")]
+    public Int32 run_time { get; set; }
+    
     [DecimalValidator(8, 3)]
     public decimal start_vel_x { get; set; }
     
@@ -23,7 +26,7 @@ public class CheckpointsModel
     public decimal start_vel_z { get; set; }
     
     [DecimalValidator(8, 3)]
-    public decimal end_vel_x { get; set; }
+    public decimal end_vel_x { get; set; }  
     
     [DecimalValidator(8, 3)]
     public decimal end_vel_y { get; set; }

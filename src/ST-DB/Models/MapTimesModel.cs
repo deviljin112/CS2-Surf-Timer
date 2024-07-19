@@ -53,6 +53,6 @@ public class MapTimesModel
     public Int32 run_date { get; set; }
     
     [CustomTypeValidator("longblob")]
-    [CommentValidator("Replay frame data")]
+    [CommentValidator("Replay for the run")]
     public byte[] replay_frames { get; set; }
 }

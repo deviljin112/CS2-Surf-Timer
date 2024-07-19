@@ -10,6 +10,11 @@ public class MapsModel
     [IncrementValidator]
     public Int32 id { get; set; }
     
+    [Required]
+    [UniqueValidator]
+    [StringLength(maximumLength: 64)]
+    public string name { get; set; }
+    
     [DefaultValue(0)]
     public Byte tier { get; set; }
     
