@@ -1,16 +1,12 @@
-# PLEASE DO NOT USE THIS, IT IS NOT COMPLETE AND IS AN ACTIVE WORK-IN-PROGRESS. ISSUES HAVE BEEN DISABLED FOR THIS REASON. 
-## Please join the Discord: https://discord.cs.surf
+# CS2 Surf Timer Fork
+This is a fork of the https://github.com/CS2Surf/Timer CS2 Surf Timer.
 
-# Timer
-Core plugin for CS2 Surf Servers. This project is aimed to be fully open-source with the goal of uniting all of CS2 surf towards building the game mode.
+# Road Map
+[Original Repo's](https://github.com/CS2Surf/Timer) road map extended with what the fork achieved / wants to achieve.
 
-# Goals
-*Note: This is not definitive/complete and simply serves as a reference for what we should try to achieve. Subject to change.*
-Bold & Italics = being worked on.
-
-- [ ] Database
-  - [ ] MySQL database schema ([W.I.P Design Diagram](https://dbdiagram.io/d/CS2Surf-Timer-DB-Schema-6560b76b3be1495787ace4d2))
-  - [ ] Plugin auto-create tables for easier setup? 
+- [x] Database
+  - [x] MySQL database schema
+  - [x] Plugin auto-create tables for easier setup
   - [X] Base database class implementation
 - [ ] Maps
   - [X] Implement map info object (DB)
@@ -29,32 +25,31 @@ Bold & Italics = being worked on.
       - [ ] Save Bonus times
     - [X] Start/End trigger touch hooks
     - [X] Load zone information automatically from standardised triggers: https://github.com/CS2Surf/Timer/wiki/CS2-Surf-Mapping 
-    - [X] _**Support for stages (`/rs`, teleporting with `/s`)**_
-    - [ ] _**Support for bonuses (`/rs`, teleporting with `/b #`)**_
-    - [ ] _**Start/End touch hooks implemented for all zones**_
-- [ ] Surf configs
+    - [X] Support for stages (`/rs`, teleporting with `/s`)
+    - [ ] Support for bonuses (`/rs`, teleporting with `/b #`)
+    - [ ] Start/End touch hooks implemented for all zones
+- [X] Surf configs
   - [X] Server settings configuration
-  - [ ] Plugin configuration
+  - [X] Plugin configuration
   - [X] Database configuration
 - [ ] Timing
   - [X] Base timer class implementation
   - [X] Base timer HUD implementation
-  - [X] Prespeed measurement and display
+  - [X] Pre-speed measurement and display
   - [ ] Save/load times
     - [x] Map times
     - [x] Checkpoint times
     - [ ] Stage times
     - [ ] Bonus times
   - [X] Practice Mode implementation
-  - [ ] Announce records to Discord
-  - [ ] Stretch goal: sub-tick timing
+- [ ] Ranking System
+  - [ ] Points/Skill Groups (DB)
 - [ ] Player Data
   - [X] Base player class
-  - [ ] **_Player stat classes_**
+  - [ ] Player stat class
   - [ ] Profile implementation (DB)
-  - [ ] Points/Skill Groups (DB)
   - [ ] Player settings (DB)
-- [x] Replays - Not tracking Stage/Bonus times but Replay functionality for them is there
+- [x] Replays
    - [x] Personal Best 
       - [x] Map Record
       - [ ] Stage Record
@@ -64,4 +59,18 @@ Bold & Italics = being worked on.
       - [ ] Stage Record
       - [ ] Bonus Record
 - [ ] Style implementation (SW, HSW, BW)
-- [ ] Paint (?)
+- [ ] Commands
+  - [ ] RTV
+  - [ ] Map Change (admin)
+  - [ ] World Map (3D text) top 10 leaderboard
+  - [ ] Customize HUD (or turn it off entirely)
+- [ ] VIP Features
+  - [ ] Custom Titles
+  - [ ] Extra weighting on RTV
+  - [ ] Custom Hud (?)
+  - [ ] Extra Commands (?)
+- [ ] Discord Integrations
+  - [ ] Announce records to Discord
+  - [ ] Call Admin
+  - [ ] Map Change announcement
+  - [ ] Remote player stats (in discord)

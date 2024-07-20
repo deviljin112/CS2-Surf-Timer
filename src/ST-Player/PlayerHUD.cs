@@ -1,8 +1,9 @@
+using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Modules.Utils;
 
-namespace SurfTimer;
+namespace SurfTimer.ST_Player;
 
-internal class PlayerHUD 
+public class PlayerHUD
 {
     private Player _player;
 
@@ -20,7 +21,6 @@ internal class PlayerHUD
             else
                 return $"<font class='fontSize-{size.ToLower()}'>{title}: <font color='{color}'>{body}</font></font>";
         }
-
         else
         {
             if (size == "m")
@@ -57,7 +57,7 @@ internal class PlayerHUD
 
     public void Display()
     {
-        if(!_player.Controller.IsValid)
+        if (!_player.Controller.IsValid)
             return;
 
         if (_player.Controller.PawnIsAlive)
@@ -73,29 +73,51 @@ internal class PlayerHUD
                 else
                     timerColor = "#2E9F65";
             }
+
             string timerModule = FormatHUDElementHTML("", FormatTime(_player.Timer.Ticks), timerColor);
 
             // Velocity Module - To-do: Make velocity module configurable (XY or XYZ velocity)
-            float velocity = (float)Math.Sqrt(_player.Controller.PlayerPawn.Value!.AbsVelocity.X * _player.Controller.PlayerPawn.Value!.AbsVelocity.X
-                                                + _player.Controller.PlayerPawn.Value!.AbsVelocity.Y * _player.Controller.PlayerPawn.Value!.AbsVelocity.Y
-                                                + _player.Controller.PlayerPawn.Value!.AbsVelocity.Z * _player.Controller.PlayerPawn.Value!.AbsVelocity.Z);
+            float velocity = (float)Math.Sqrt(
+                _player.Controller.PlayerPawn.Value!.AbsVelocity.X * _player.Controller.PlayerPawn.Value!.AbsVelocity.X
+                + _player.Controller.PlayerPawn.Value!.AbsVelocity.Y *
+                _player.Controller.PlayerPawn.Value!.AbsVelocity.Y
+                + _player.Controller.PlayerPawn.Value!.AbsVelocity.Z *
+                _player.Controller.PlayerPawn.Value!.AbsVelocity.Z);
             string velocityModule = FormatHUDElementHTML("Speed", velocity.ToString("0"), "#79d1ed") + " u/s";
             // Rank Module
             string rankModule = FormatHUDElementHTML("Rank", $"N/A", "#7882dd");
             if (_player.Stats.PB[style].ID != -1 && _player.CurrMap.WR[style].ID != -1)
             {
-                rankModule = FormatHUDElementHTML("Rank", $"{_player.Stats.PB[style].Rank}/{_player.CurrMap.TotalCompletions}", "#7882dd");
+                rankModule = FormatHUDElementHTML("Rank",
+                    $"{_player.Stats.PB[style].Rank}/{_player.CurrMap.TotalCompletions}", "#7882dd");
             }
             else if (_player.CurrMap.WR[style].ID != -1)
             {
                 rankModule = FormatHUDElementHTML("Rank", $"-/{_player.CurrMap.TotalCompletions}", "#7882dd");
             }
-            // PB & WR Modules
-            string pbModule = FormatHUDElementHTML("PB", _player.Stats.PB[style].Ticks > 0 ? FormatTime(_player.Stats.PB[style].Ticks) : "N/A", "#7882dd"); // IMPLEMENT IN PlayerStats // To-do: make Style (currently 0) be dynamic
-            string wrModule = FormatHUDElementHTML("WR", _player.CurrMap.WR[style].Ticks > 0 ? FormatTime(_player.CurrMap.WR[style].Ticks) : "N/A", "#ffc61a"); // IMPLEMENT IN PlayerStats - This should be part of CurrentMap, not PlayerStats?
 
+            // PB & WR Modules
+            string pbModule = FormatHUDElementHTML("PB",
+                _player.Stats.PB[style].Ticks > 0 ? FormatTime(_player.Stats.PB[style].Ticks) : "N/A",
+                "#7882dd"); // IMPLEMENT IN PlayerStats // To-do: make Style (currently 0) be dynamic
+            string wrModule = FormatHUDElementHTML("WR",
+                _player.CurrMap.WR[style].Ticks > 0 ? FormatTime(_player.CurrMap.WR[style].Ticks) : "N/A",
+                "#ffc61a"); // IMPLEMENT IN PlayerStats - This should be part of CurrentMap, not PlayerStats?
+
+            var buttons = _player.Controller.Buttons;
+            List<string> buttonDisplay = new List<string>
+            {
+                $"{((buttons & PlayerButtons.Jump) != 0 ? "JUMP" : "_")}",
+                $"{((buttons & PlayerButtons.Duck) != 0 ? "DUCK" : "_")}",
+                $"{((buttons & PlayerButtons.Forward) != 0 ? "W" : "_")}",
+                $"{((buttons & PlayerButtons.Moveleft) != 0 ? "A" : "_")}",
+                $"{((buttons & PlayerButtons.Back) != 0 ? "S" : "_")}",
+                $"{((buttons & PlayerButtons.Moveright) != 0 ? "D" : "_")}",
+            };
+            string buttonModule = FormatHUDElementHTML("", string.Join(" ", buttonDisplay), "#ff4d00");
+            
             // Build HUD
-            string hud = $"{timerModule}<br>{velocityModule}<br>{pbModule} | {rankModule}<br>{wrModule}";
+            string hud = $"{timerModule}<br>{velocityModule}<br>{pbModule} | {rankModule}<br>{wrModule}<br>{buttonModule}";
 
             // Display HUD
             _player.Controller.PrintToCenterHtml(hud);
@@ -104,15 +126,31 @@ internal class PlayerHUD
         {
             for (int i = 0; i < _player.CurrMap.ReplayBots.Count; i++)
             {
-                if(!_player.CurrMap.ReplayBots[i].IsPlayable || !_player.IsSpectating(_player.CurrMap.ReplayBots[i].Controller!))
+                if (!_player.CurrMap.ReplayBots[i].IsPlayable ||
+                    !_player.IsSpectating(_player.CurrMap.ReplayBots[i].Controller!))
                     continue;
 
                 string replayModule = $"{FormatHUDElementHTML("", "REPLAY", "red", "large")}";
 
-                string nameModule = FormatHUDElementHTML($"{_player.CurrMap.ReplayBots[i].Stat_PlayerName}", $"{FormatTime(_player.CurrMap.ReplayBots[i].Stat_RunTime)}", "#ffd500");
+                string nameModule = FormatHUDElementHTML($"{_player.CurrMap.ReplayBots[i].Stat_PlayerName}",
+                    $"{FormatTime(_player.CurrMap.ReplayBots[i].Stat_RunTime)}", "#ffd500");
 
-                string elapsed_time = FormatHUDElementHTML("Time", $"{PlayerHUD.FormatTime(_player.CurrMap.ReplayBots[i].Stat_RunTick)}", "#7882dd");
-                string hud = $"{replayModule}<br>{elapsed_time}<br>{nameModule}";
+                string elapsed_time = FormatHUDElementHTML("Time",
+                    $"{PlayerHUD.FormatTime(_player.CurrMap.ReplayBots[i].Stat_RunTick)}", "#7882dd");
+                
+                var buttons = _player.CurrMap.ReplayBots[i].Controller!.Buttons;
+                List<string> buttonDisplay = new List<string>
+                {
+                    $"{((buttons & PlayerButtons.Jump) != 0 ? "JUMP" : "_")}",
+                    $"{((buttons & PlayerButtons.Duck) != 0 ? "DUCK" : "_")}",
+                    $"{((buttons & PlayerButtons.Forward) != 0 ? "W" : "_")}",
+                    $"{((buttons & PlayerButtons.Moveleft) != 0 ? "A" : "_")}",
+                    $"{((buttons & PlayerButtons.Back) != 0 ? "S" : "_")}",
+                    $"{((buttons & PlayerButtons.Moveright) != 0 ? "D" : "_")}",
+                };
+                string buttonModule = FormatHUDElementHTML("", string.Join(" ", buttonDisplay), "#ff4d00");
+                
+                string hud = $"{replayModule}<br>{elapsed_time}<br>{nameModule}<br>{buttonModule}";
 
                 _player.Controller.PrintToCenterHtml(hud);
             }
@@ -123,7 +161,9 @@ internal class PlayerHUD
     /// Only calculates if the player has a PB, otherwise it will display N/A
     /// </summary>
     /// <param name="PluginPrefix"></param>
-    public void DisplayCheckpointMessages(string PluginPrefix) // To-do: PluginPrefix should be accessible in here without passing it as a parameter
+    public void
+        DisplayCheckpointMessages(
+            string PluginPrefix) // To-do: PluginPrefix should be accessible in here without passing it as a parameter
     {
         int pbTime;
         int wrTime = -1;
@@ -132,9 +172,10 @@ internal class PlayerHUD
         int style = _player.Timer.Style;
 
         int currentTime = _player.Timer.Ticks;
-        float currentSpeed = (float)Math.Sqrt(_player.Controller.PlayerPawn.Value!.AbsVelocity.X * _player.Controller.PlayerPawn.Value!.AbsVelocity.X
-                                        + _player.Controller.PlayerPawn.Value!.AbsVelocity.Y * _player.Controller.PlayerPawn.Value!.AbsVelocity.Y
-                                        + _player.Controller.PlayerPawn.Value!.AbsVelocity.Z * _player.Controller.PlayerPawn.Value!.AbsVelocity.Z);
+        float currentSpeed = (float)Math.Sqrt(
+            _player.Controller.PlayerPawn.Value!.AbsVelocity.X * _player.Controller.PlayerPawn.Value!.AbsVelocity.X
+            + _player.Controller.PlayerPawn.Value!.AbsVelocity.Y * _player.Controller.PlayerPawn.Value!.AbsVelocity.Y
+            + _player.Controller.PlayerPawn.Value!.AbsVelocity.Z * _player.Controller.PlayerPawn.Value!.AbsVelocity.Z);
 
         // Default values for the PB and WR differences in case no calculations can be made
         string strPbDifference = $"{ChatColors.Grey}N/A{ChatColors.Default} ({ChatColors.Grey}N/A{ChatColors.Default})";
@@ -145,98 +186,124 @@ internal class PlayerHUD
         try
         {
             pbTime = _player.Stats.PB[style].Checkpoint[_player.Timer.Checkpoint].Ticks;
-            pbSpeed = (float)Math.Sqrt(_player.Stats.PB[style].Checkpoint[_player.Timer.Checkpoint].StartVelX * _player.Stats.PB[style].Checkpoint[_player.Timer.Checkpoint].StartVelX
-                                        + _player.Stats.PB[style].Checkpoint[_player.Timer.Checkpoint].StartVelY * _player.Stats.PB[style].Checkpoint[_player.Timer.Checkpoint].StartVelY
-                                        + _player.Stats.PB[style].Checkpoint[_player.Timer.Checkpoint].StartVelZ * _player.Stats.PB[style].Checkpoint[_player.Timer.Checkpoint].StartVelZ);
-            
-            #if DEBUG
-            Console.WriteLine($"CS2 Surf DEBUG >> DisplayCheckpointMessages -> [TIME]  Got pbTime from _player.Stats.PB[{style}].Checkpoint[{_player.Timer.Checkpoint} = {pbTime}]");
-            Console.WriteLine($"CS2 Surf DEBUG >> DisplayCheckpointMessages -> [SPEED] Got pbSpeed from _player.Stats.PB[{style}].Checkpoint[{_player.Timer.Checkpoint}] = {pbSpeed}");
-            #endif
+            pbSpeed = (float)Math.Sqrt(
+                _player.Stats.PB[style].Checkpoint[_player.Timer.Checkpoint].StartVelX *
+                _player.Stats.PB[style].Checkpoint[_player.Timer.Checkpoint].StartVelX
+                + _player.Stats.PB[style].Checkpoint[_player.Timer.Checkpoint].StartVelY *
+                _player.Stats.PB[style].Checkpoint[_player.Timer.Checkpoint].StartVelY
+                + _player.Stats.PB[style].Checkpoint[_player.Timer.Checkpoint].StartVelZ *
+                _player.Stats.PB[style].Checkpoint[_player.Timer.Checkpoint].StartVelZ);
+
+#if DEBUG
+            Console.WriteLine(
+                $"CS2 Surf DEBUG >> DisplayCheckpointMessages -> [TIME]  Got pbTime from _player.Stats.PB[{style}].Checkpoint[{_player.Timer.Checkpoint} = {pbTime}]");
+            Console.WriteLine(
+                $"CS2 Surf DEBUG >> DisplayCheckpointMessages -> [SPEED] Got pbSpeed from _player.Stats.PB[{style}].Checkpoint[{_player.Timer.Checkpoint}] = {pbSpeed}");
+#endif
         }
-        #if DEBUG
+#if DEBUG
         catch (System.Exception ex)
-        #else
+#else
         catch (System.Exception)
-        #endif
+#endif
         {
             // Handle the exception gracefully without stopping the application
             // We assign default values to pbTime and pbSpeed
             pbTime = -1; // This determines if we will calculate differences or not!!!
             pbSpeed = 0.0f;
-            
-            #if DEBUG
-            Console.WriteLine($"CS2 Surf CAUGHT EXCEPTION >> DisplayCheckpointMessages -> An error occurred: {ex.Message}");
-            Console.WriteLine($"CS2 Surf CAUGHT EXCEPTION >> DisplayCheckpointMessages -> An error occurred Player has no PB and therefore no Checkpoints | _player.Stats.PB[{style}].Checkpoint.Count = {_player.Stats.PB[style].Checkpoint.Count}");
-            #endif
+
+#if DEBUG
+            Console.WriteLine(
+                $"CS2 Surf CAUGHT EXCEPTION >> DisplayCheckpointMessages -> An error occurred: {ex.Message}");
+            Console.WriteLine(
+                $"CS2 Surf CAUGHT EXCEPTION >> DisplayCheckpointMessages -> An error occurred Player has no PB and therefore no Checkpoints | _player.Stats.PB[{style}].Checkpoint.Count = {_player.Stats.PB[style].Checkpoint.Count}");
+#endif
         }
 
         // Calculate differences in PB (PB - Current)
         if (pbTime != -1)
         {
-            #if DEBUG
-            Console.WriteLine($"CS2 Surf DEBUG >> DisplayCheckpointMessages -> Starting PB difference calculation... (pbTime != -1)");
-            #endif
+#if DEBUG
+            Console.WriteLine(
+                $"CS2 Surf DEBUG >> DisplayCheckpointMessages -> Starting PB difference calculation... (pbTime != -1)");
+#endif
             // Reset the string
             strPbDifference = "";
 
             // Calculate the time difference
             if (pbTime - currentTime < 0.0)
             {
-                strPbDifference += ChatColors.Red + "+" + FormatTime((pbTime - currentTime) * -1); // We multiply by -1 to get the positive value
+                strPbDifference +=
+                    ChatColors.Red + "+" +
+                    FormatTime((pbTime - currentTime) * -1); // We multiply by -1 to get the positive value
             }
             else if (pbTime - currentTime >= 0.0)
             {
                 strPbDifference += ChatColors.Green + "-" + FormatTime(pbTime - currentTime);
             }
+
             strPbDifference += ChatColors.Default + " ";
 
             // Calculate the speed difference
             if (pbSpeed - currentSpeed <= 0.0)
             {
-                strPbDifference += "(" + ChatColors.Green + "+" + ((pbSpeed - currentSpeed) * -1).ToString("0"); // We multiply by -1 to get the positive value
+                strPbDifference +=
+                    "(" + ChatColors.Green + "+" +
+                    ((pbSpeed - currentSpeed) * -1).ToString("0"); // We multiply by -1 to get the positive value
             }
             else if (pbSpeed - currentSpeed > 0.0)
             {
                 strPbDifference += "(" + ChatColors.Red + "-" + (pbSpeed - currentSpeed).ToString("0");
             }
+
             strPbDifference += ChatColors.Default + ")";
         }
 
         if (_player.CurrMap.WR[style].Ticks > 0)
         {
             // Calculate differences in WR (WR - Current)
-            #if DEBUG
-            Console.WriteLine($"CS2 Surf DEBUG >> DisplayCheckpointMessages -> Starting WR difference calculation... (_player.CurrMap.WR[{style}].Ticks > 0)");
-            #endif
+#if DEBUG
+            Console.WriteLine(
+                $"CS2 Surf DEBUG >> DisplayCheckpointMessages -> Starting WR difference calculation... (_player.CurrMap.WR[{style}].Ticks > 0)");
+#endif
 
             wrTime = _player.CurrMap.WR[style].Checkpoint[_player.Timer.Checkpoint].Ticks;
-            wrSpeed = (float)Math.Sqrt(_player.CurrMap.WR[style].Checkpoint[_player.Timer.Checkpoint].StartVelX * _player.CurrMap.WR[style].Checkpoint[_player.Timer.Checkpoint].StartVelX
-                                        + _player.CurrMap.WR[style].Checkpoint[_player.Timer.Checkpoint].StartVelY * _player.CurrMap.WR[style].Checkpoint[_player.Timer.Checkpoint].StartVelY
-                                        + _player.CurrMap.WR[style].Checkpoint[_player.Timer.Checkpoint].StartVelZ * _player.CurrMap.WR[style].Checkpoint[_player.Timer.Checkpoint].StartVelZ);
+            wrSpeed = (float)Math.Sqrt(
+                _player.CurrMap.WR[style].Checkpoint[_player.Timer.Checkpoint].StartVelX *
+                _player.CurrMap.WR[style].Checkpoint[_player.Timer.Checkpoint].StartVelX
+                + _player.CurrMap.WR[style].Checkpoint[_player.Timer.Checkpoint].StartVelY *
+                _player.CurrMap.WR[style].Checkpoint[_player.Timer.Checkpoint].StartVelY
+                + _player.CurrMap.WR[style].Checkpoint[_player.Timer.Checkpoint].StartVelZ *
+                _player.CurrMap.WR[style].Checkpoint[_player.Timer.Checkpoint].StartVelZ);
             // Reset the string
             strWrDifference = "";
 
             // Calculate the WR time difference
             if (wrTime - currentTime < 0.0)
             {
-                strWrDifference += ChatColors.Red + "+" + FormatTime((wrTime - currentTime) * -1); // We multiply by -1 to get the positive value
+                strWrDifference +=
+                    ChatColors.Red + "+" +
+                    FormatTime((wrTime - currentTime) * -1); // We multiply by -1 to get the positive value
             }
             else if (wrTime - currentTime >= 0.0)
             {
                 strWrDifference += ChatColors.Green + "-" + FormatTime(wrTime - currentTime);
             }
+
             strWrDifference += ChatColors.Default + " ";
 
             // Calculate the WR speed difference
             if (wrSpeed - currentSpeed <= 0.0)
             {
-                strWrDifference += "(" + ChatColors.Green + "+" + ((wrSpeed - currentSpeed) * -1).ToString("0"); // We multiply by -1 to get the positive value
+                strWrDifference +=
+                    "(" + ChatColors.Green + "+" +
+                    ((wrSpeed - currentSpeed) * -1).ToString("0"); // We multiply by -1 to get the positive value
             }
             else if (wrSpeed - currentSpeed > 0.0)
             {
                 strWrDifference += "(" + ChatColors.Red + "-" + (wrSpeed - currentSpeed).ToString("0");
             }
+
             strWrDifference += ChatColors.Default + ")";
         }
 
@@ -248,11 +315,15 @@ internal class PlayerHUD
             $"[PB: {strPbDifference} | " +
             $"WR: {strWrDifference}]");
 
-        #if DEBUG
-        Console.WriteLine($"CS2 Surf DEBUG >> DisplayCheckpointMessages -> [TIME]  PB: {pbTime} - CURR: {currentTime} = pbTime: {pbTime - currentTime}");
-        Console.WriteLine($"CS2 Surf DEBUG >> DisplayCheckpointMessages -> [SPEED] PB: {pbSpeed} - CURR: {currentSpeed} = difference: {pbSpeed - currentSpeed}");
-        Console.WriteLine($"CS2 Surf DEBUG >> DisplayCheckpointMessages -> [TIME]  WR: {wrTime} - CURR: {currentTime} = difference: {wrTime - currentTime}");
-        Console.WriteLine($"CS2 Surf DEBUG >> DisplayCheckpointMessages -> [SPEED] WR: {wrSpeed} - CURR: {currentSpeed} = difference: {wrSpeed - currentSpeed}");
-        #endif 
+#if DEBUG
+        Console.WriteLine(
+            $"CS2 Surf DEBUG >> DisplayCheckpointMessages -> [TIME]  PB: {pbTime} - CURR: {currentTime} = pbTime: {pbTime - currentTime}");
+        Console.WriteLine(
+            $"CS2 Surf DEBUG >> DisplayCheckpointMessages -> [SPEED] PB: {pbSpeed} - CURR: {currentSpeed} = difference: {pbSpeed - currentSpeed}");
+        Console.WriteLine(
+            $"CS2 Surf DEBUG >> DisplayCheckpointMessages -> [TIME]  WR: {wrTime} - CURR: {currentTime} = difference: {wrTime - currentTime}");
+        Console.WriteLine(
+            $"CS2 Surf DEBUG >> DisplayCheckpointMessages -> [SPEED] WR: {wrSpeed} - CURR: {currentSpeed} = difference: {wrSpeed - currentSpeed}");
+#endif
     }
 }

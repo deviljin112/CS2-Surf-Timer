@@ -1,132 +1,81 @@
-﻿/*
-                      ___  _____  _________  ___
-                     ___  /  _/ |/ / __/ _ \/ _ |
-                    ___  _/ //    / _// , _/ __ |
-                   ___  /___/_/|_/_/ /_/|_/_/ |_|
-
-    Official Timer plugin for the CS2 Surf Initiative.
-    Copyright (C) 2024  Liam C. (Infra)
-
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU Affero General Public License as published
-    by the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU Affero General Public License for more details.
-
-    You should have received a copy of the GNU Affero General Public License
-    along with this program.  If not, see <https://www.gnu.org/licenses/>.
-
-    Source: https://github.com/CS2Surf/Timer
-*/
-
-#define DEBUG
+﻿#define DEBUG
 
 using System.Text.Json;
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes;
-using CounterStrikeSharp.API.Core.Attributes.Registration;
-using CounterStrikeSharp.API.Modules.Memory;
-using CounterStrikeSharp.API.Modules.Utils;
+using Microsoft.Extensions.Logging;
+using SurfTimer.ST_Commands;
+using SurfTimer.ST_DB;
+using SurfTimer.ST_Events;
+using SurfTimer.ST_Game;
+using SurfTimer.ST_Interfaces;
 
 namespace SurfTimer;
 
-// Gameplan: https://github.com/CS2Surf/Timer/tree/dev/README.md
 [MinimumApiVersion(120)]
-public partial class SurfTimer : BasePlugin
+public class SurfTimer : BasePlugin
 {
-    // Metadata
     public override string ModuleName => "CS2 SurfTimer";
-    public override string ModuleVersion => "DEV-1";
-    public override string ModuleDescription => "Official Surf Timer by the CS2 Surf Initiative.";
-    public override string ModuleAuthor => "The CS2 Surf Initiative - github.com/cs2surf";
-    public string PluginPrefix => $"[{ChatColors.DarkBlue}CS2 Surf{ChatColors.Default}]"; // To-do: make configurable
+    public override string ModuleVersion => "0.0.1";
+    public override string ModuleDescription => "Fork of the Official Surf Timer by the CS2 Surf Initiative.";
+    public override string ModuleAuthor => "Original: github.com/CS2Surf Fork: Deviljin112";
 
-    // Globals
-    private Dictionary<int, Player> playerList = new Dictionary<int, Player>(); // This can probably be done way better, revisit
-    internal TimerDatabase? DB = new TimerDatabase();
-    public string PluginPath = Server.GameDirectory + "/csgo/addons/counterstrikesharp/plugins/SurfTimer/";
-    internal Map CurrentMap = null!;
+    private readonly ILogger<SurfTimer> _logger;
+    private readonly GameManager _gameManager;
+    private readonly TimerDatabase _database;
+    private TickEvents _tickEvents;
+    private MapEvents _mapEvents;
+    private PlayerEvents _playerEvents;
+    private TriggerTouchEvents _triggerTouchEvents;
+    private MapCommands _mapCommands;
+    private PlayerCommands _playerCommands;
 
-    /* ========== MAP START HOOKS ========== */
-    public void OnMapStart(string mapName)
+    public SurfTimer(ILogger<SurfTimer> logger, GameManager gameManager, TimerDatabase database)
     {
-        // Initialise Map Object
-        // To-do: It seems like players connect very quickly and sometimes `CurrentMap` is null when it shouldn't be, lowered the timer ot 1.0 seconds for now
-        if ((CurrentMap == null || CurrentMap.Name != mapName) && mapName.Contains("surf_"))
-        {
-            AddTimer(1.0f, () => CurrentMap = new Map(mapName, DB!)); // Was 3 seconds, now 1 second
-        }
+        _logger = logger;
+        _gameManager = gameManager;
+        _database = database;
     }
 
-    public void OnMapEnd()
-    {
-        // Clear/reset stuff here
-        CurrentMap = null!;
-        playerList.Clear();
-    }
-
-    [GameEventHandler]
-    public HookResult OnRoundStart(EventRoundStart @event, GameEventInfo info)
-    {
-        // Load cvars/other configs here
-        // Execute server_settings.cfg
-
-        ConVarHelper.RemoveCheatFlagFromConVar("bot_stop");
-        ConVarHelper.RemoveCheatFlagFromConVar("bot_freeze");
-        ConVarHelper.RemoveCheatFlagFromConVar("bot_zombie");
-
-        Server.ExecuteCommand("execifexists SurfTimer/server_settings.cfg");
-        Console.WriteLine("[CS2 Surf] Executed configuration: server_settings.cfg");
-        return HookResult.Continue;
-    }
-
-    /* ========== PLUGIN LOAD ========== */
     public override void Load(bool hotReload)
     {
-        // Load database config & spawn database object
-        try
-        {
-            JsonElement dbConfig = JsonDocument.Parse(File.ReadAllText(Server.GameDirectory + "/csgo/cfg/SurfTimer/database.json")).RootElement;
-            DB = new TimerDatabase(dbConfig.GetProperty("host").GetString()!,
-                                    dbConfig.GetProperty("database").GetString()!,
-                                    dbConfig.GetProperty("user").GetString()!,
-                                    dbConfig.GetProperty("password").GetString()!,
-                                    dbConfig.GetProperty("port").GetInt32(),
-                                    dbConfig.GetProperty("timeout").GetInt32());
-            Console.WriteLine("[CS2 Surf] Database connection established.");
-            DB.InitDb();
-            Console.WriteLine("[CS2 Surf] Database initialized.");
-        }
+        DatabaseConfig dbConfig =
+            JsonSerializer.Deserialize<DatabaseConfig>(
+                File.ReadAllText(Server.GameDirectory + "/csgo/cfg/SurfTimer/database.json"))!;
 
-        catch (Exception e)
-        {
-            Console.WriteLine($"[CS2 Surf] Error loading database config: {e.Message}");
-            throw new Exception("[CS2 Surf] Error loading Database!");
-        }
+        _database.Configure(
+            dbConfig.host,
+            dbConfig.database,
+            dbConfig.user,
+            dbConfig.password,
+            dbConfig.port,
+            dbConfig.timeout
+        );
+        _logger.LogInformation("[CS2 Surf] Database connection established.");
 
-        Console.WriteLine(String.Format("  ____________    ____         ___\n"
-                                    + " / ___/ __/_  |  / __/_ ______/ _/\n"
-                                    + "/ /___\\ \\/ __/  _\\ \\/ // / __/ _/ \n"
-                                    + "\\___/___/____/ /___/\\_,_/_/ /_/\n"
-                                    + $"[CS2 Surf] SurfTimer plugin loaded. Version: {ModuleVersion}"
-                                    + $"[CS2 Surf] This plugin is licensed under the GNU Affero General Public License v3.0. See LICENSE for more information. Source code: https://github.com/CS2Surf/Timer\n"
-        ));
+        _database.InitDb();
+        _logger.LogInformation("[CS2 Surf] Database initialized.");
 
-        // Map Start Hook
-        RegisterListener<Listeners.OnMapStart>(OnMapStart);
-        // Map End Hook
-        RegisterListener<Listeners.OnMapEnd>(OnMapEnd);
-        // Tick listener
-        RegisterListener<Listeners.OnTick>(OnTick);
+        _mapEvents = new MapEvents(_logger, this, _gameManager, _database);
+        _mapEvents.Init();
+        _tickEvents = new TickEvents(_logger, this, _gameManager);
+        _tickEvents.Init();
+        _triggerTouchEvents = new TriggerTouchEvents(_logger, this, _gameManager, _database);
+        _triggerTouchEvents.Init();
+        _playerEvents = new PlayerEvents(_logger, this, _gameManager, _database);
+        _playerEvents.Init();
+        _mapCommands = new MapCommands(_logger, this, _gameManager);
+        _mapCommands.Init();
+        _playerCommands = new PlayerCommands(_logger, this, _gameManager);
+        _playerCommands.Init();
 
-        // StartTouch Hook
-        VirtualFunctions.CBaseTrigger_StartTouchFunc.Hook(OnTriggerStartTouch, HookMode.Post);
-        // EndTouch Hook
-        VirtualFunctions.CBaseTrigger_EndTouchFunc.Hook(OnTriggerEndTouch, HookMode.Post);
+        _logger.LogInformation(
+            String.Format("\n  ____________    ____         ___\n"
+                          + " / ___/ __/_  |  / __/_ ______/ _/\n"
+                          + "/ /___\\ \\/ __/  _\\ \\/ // / __/ _/ \n"
+                          + "\\___/___/____/ /___/\\_,_/_/ /_/\n"
+                          + $"[CS2 Surf] SurfTimer plugin loaded. Version: {ModuleVersion}"
+            ));
     }
 }

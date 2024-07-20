@@ -1,8 +1,8 @@
-namespace SurfTimer;
+namespace SurfTimer.ST_Player.Stats;
 
 // To-do: make Style (currently 0) be dynamic
 // To-do: add `Type`
-internal class PersonalBest
+public class PersonalBest
 {
     public int ID { get; set; } = -1; // Exclude from constructor, retrieve from Database when loading/saving
     public int Ticks { get; set; }

@@ -4,7 +4,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using CounterStrikeSharp.API.Modules.Utils;
 
-namespace SurfTimer;
+namespace SurfTimer.ST_Utils;
 
 internal class VectorConverter : JsonConverter<Vector>
 {

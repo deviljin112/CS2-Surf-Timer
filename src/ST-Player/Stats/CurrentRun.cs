@@ -1,9 +1,11 @@
-namespace SurfTimer;
+using SurfTimer.ST_DB;
+
+namespace SurfTimer.ST_Player.Stats;
 
 /// <summary>
 /// This class stores data for the current run.
 /// </summary>
-internal class CurrentRun
+public class CurrentRun
 {
     public Dictionary<int, Checkpoint> Checkpoint { get; set; } // Current RUN checkpoints tracker
     public int Ticks { get; set; } // To-do: will be the last (any) zone end touch time

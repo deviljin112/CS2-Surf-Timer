@@ -1,8 +1,9 @@
 using MySqlConnector;
+using SurfTimer.ST_DB;
 
-namespace SurfTimer;
+namespace SurfTimer.ST_Player.Stats;
 
-internal class PlayerStats
+public class PlayerStats
 {
     // To-Do: Each stat should be a class of its own, with its own methods and properties - easier to work with. 
     //        Temporarily, we store ticks + basic info so we can experiment
@@ -26,9 +27,9 @@ internal class PlayerStats
     /// `Checkpoints` are loaded separately because inside the while loop we cannot run queries.
     /// This can populate all the `style` stats the player has for the map - currently only 1 style is supported
     /// </summary>
-    public void LoadMapTimesData(Player player, TimerDatabase DB, int playerId = 0, int mapId = 0)
+    public void LoadMapTimesData(Player player, TimerDatabase database, int playerId = 0, int mapId = 0)
     {
-        Task<MySqlDataReader> dbTask2 = DB.Query($@"
+        Task<MySqlDataReader> dbTask2 = database.Query($@"
             SELECT mainquery.*, (SELECT COUNT(*) FROM `MapTimes` AS subquery 
             WHERE subquery.`map_id` = mainquery.`map_id` AND subquery.`style` = mainquery.`style` 
             AND subquery.`run_time` <= mainquery.`run_time`) AS `rank` FROM `MapTimes` AS mainquery 

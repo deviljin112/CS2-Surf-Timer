@@ -1,9 +1,10 @@
 using System.Text.Json;
 using CounterStrikeSharp.API.Modules.Utils;
+using SurfTimer.ST_Utils;
 
-namespace SurfTimer;
+namespace SurfTimer.ST_Player.Replay;
 
-internal class ReplayRecorder
+public class ReplayRecorder
 {
     public bool IsRecording { get; set; } = false;
     public ReplayFrameSituation CurrentSituation { get; set; } = ReplayFrameSituation.NONE;

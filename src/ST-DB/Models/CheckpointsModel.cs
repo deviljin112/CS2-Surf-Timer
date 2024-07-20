@@ -1,7 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations;
-using SurfTimer.Validators;
+using SurfTimer.ST_DB.Validators;
 
-namespace SurfTimer.Models;
+namespace SurfTimer.ST_DB.Models;
 
 public class CheckpointsModel
 {

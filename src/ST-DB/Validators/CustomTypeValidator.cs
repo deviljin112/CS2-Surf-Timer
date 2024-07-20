@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace SurfTimer.Validators;
+namespace SurfTimer.ST_DB.Validators;
 
 /// <summary>
 /// This validator will override the C# datatype definition when building the SQL query.

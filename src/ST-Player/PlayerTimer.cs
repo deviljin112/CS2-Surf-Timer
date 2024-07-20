@@ -1,6 +1,8 @@
-namespace SurfTimer;
+using SurfTimer.ST_Player.Stats;
 
-internal class PlayerTimer
+namespace SurfTimer.ST_Player;
+
+public class PlayerTimer
 {
     // Status
     public bool IsEnabled { get; set; } = true; // Enable toggle for entire timer

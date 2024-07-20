@@ -4,7 +4,8 @@ using CounterStrikeSharp.API.Modules.Memory;
 using System.Runtime.CompilerServices;
 using System.Text;
 
-namespace SurfTimer;
+namespace SurfTimer.ST_Utils;
+
 public class SchemaString<SchemaClass> : NativeObject where SchemaClass : NativeObject
 {
     public SchemaString(SchemaClass instance, string member)

@@ -1,8 +1,8 @@
 using CounterStrikeSharp.API.Modules.Utils;
 
-namespace SurfTimer;
+namespace SurfTimer.ST_Player.Saveloc;
 
-internal class SavelocFrame
+public class SavelocFrame
 {
         public Vector Pos { get; set; } = new Vector(0, 0, 0);
         public QAngle Ang { get; set; } = new QAngle(0, 0, 0);

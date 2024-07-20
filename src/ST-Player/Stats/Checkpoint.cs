@@ -1,6 +1,6 @@
-namespace SurfTimer;
+namespace SurfTimer.ST_Player.Stats;
 
-internal class Checkpoint : PersonalBest
+public class Checkpoint : PersonalBest
 {
     public int CP { get; set; }
     public float EndTouch { get; set; }

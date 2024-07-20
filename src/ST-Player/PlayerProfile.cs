@@ -1,6 +1,6 @@
-namespace SurfTimer;
+namespace SurfTimer.ST_Player;
 
-internal class PlayerProfile
+public class PlayerProfile
 {
     public int ID {get; set;} = 0;
     public string Name {get; set;} = "";

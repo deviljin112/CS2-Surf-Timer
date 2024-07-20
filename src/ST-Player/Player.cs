@@ -1,10 +1,15 @@
-namespace SurfTimer;
 using CounterStrikeSharp.API.Core;
+using SurfTimer.ST_Map;
+using SurfTimer.ST_Player.Replay;
+using SurfTimer.ST_Player.Saveloc;
+using SurfTimer.ST_Player.Stats;
 
-internal class Player 
+namespace SurfTimer.ST_Player;
+
+public class Player 
 {
     // CCS requirements
-    public CCSPlayerController Controller {get;}
+    public CCSPlayerController? Controller {get;}
     public CCSPlayer_MovementServices MovementServices {get;} // Can be used later for any movement modification (eg: styles)
 
     // Timer-related properties
@@ -19,34 +24,34 @@ internal class Player
     public PlayerProfile Profile {get; set;}
 
     // Map information
-    public Map CurrMap = null!;
+    public Map CurrMap;
 
     // Constructor
-    public Player(CCSPlayerController Controller, CCSPlayer_MovementServices MovementServices, PlayerProfile Profile, Map CurrMap)
+    public Player(CCSPlayerController? controller, CCSPlayer_MovementServices movementServices, PlayerProfile profile, Map? currMap)
     {
-        this.Controller = Controller;
-        this.MovementServices = MovementServices;
+        Controller = controller;
+        MovementServices = movementServices;
 
-        this.Profile = Profile;
+        Profile = profile;
 
-        this.Timer = new PlayerTimer();
-        this.Stats = new PlayerStats();
-        this.ReplayRecorder = new ReplayRecorder();
-        this.SavedLocations = new List<SavelocFrame>();
+        Timer = new PlayerTimer();
+        Stats = new PlayerStats();
+        ReplayRecorder = new ReplayRecorder();
+        SavedLocations = new List<SavelocFrame>();
         CurrentSavedLocation = 0;
 
-        this.HUD = new PlayerHUD(this);
-        this.CurrMap = CurrMap;
+        HUD = new PlayerHUD(this);
+        CurrMap = currMap!;
     }
 
     /// <summary>
-    /// Checks if current player is spcetating player <p>
+    /// Checks if current player is spectating player 'p'
     /// </summary>
-    public bool IsSpectating(CCSPlayerController p)
+    public bool IsSpectating(CCSPlayerController? p)
     {
-        if(p == null || this.Controller == null || this.Controller.Team != CounterStrikeSharp.API.Modules.Utils.CsTeam.Spectator)
+        if(p == null || Controller == null || Controller.Team != CounterStrikeSharp.API.Modules.Utils.CsTeam.Spectator)
             return false;
 
-        return p.Pawn.SerialNum == this.Controller.ObserverPawn.Value!.ObserverServices!.ObserverTarget.SerialNum;
+        return p.Pawn.SerialNum == Controller.ObserverPawn.Value!.ObserverServices!.ObserverTarget.SerialNum;
     }
 }

@@ -4,10 +4,12 @@ using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Utils;
 using MySqlConnector;
+using SurfTimer.ST_DB;
+using SurfTimer.ST_Utils;
 
-namespace SurfTimer;
+namespace SurfTimer.ST_Player.Replay;
 
-internal class ReplayPlayer
+public class ReplayPlayer
 {
     public bool IsPlaying { get; set; } = false;
     public bool IsPaused { get; set; } = false;
@@ -150,12 +152,12 @@ internal class ReplayPlayer
             this.ResetReplay();
     }
 
-    public void LoadReplayData(TimerDatabase DB)
+    public void LoadReplayData(TimerDatabase database)
     {
         if (!this.IsPlayable)
             return;
 
-        Task<MySqlDataReader> dbTask = DB.Query($@"
+        Task<MySqlDataReader> dbTask = database.Query($@"
             SELECT MapTimes.replay_frames, MapTimes.run_time, Player.name
             FROM MapTimes
             JOIN Player ON MapTimes.player_id = Player.id

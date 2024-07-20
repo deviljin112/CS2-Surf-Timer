@@ -3,15 +3,17 @@ using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Utils;
 using MySqlConnector;
+using SurfTimer.ST_DB;
+using SurfTimer.ST_Player.Replay;
+using SurfTimer.ST_Player.Stats;
 
-namespace SurfTimer;
+namespace SurfTimer.ST_Map;
 
-internal class Map
+public class Map
 {
     // Map information
-    public int ID { get; set; } =
-        -1; // Can we use this to re-trigger retrieving map information from the database?? (all db IDs are auto-incremented)
-
+    // Can we use this to re-trigger retrieving map information from the database?? (all db IDs are auto-incremented)
+    public int ID { get; set; } = -1;
     public string Name { get; set; } = "";
     public string Author { get; set; } = "";
     public int Tier { get; set; } = 0;
@@ -52,7 +54,7 @@ internal class Map
     public Vector[] CheckpointStartZone { get; } = Enumerable.Repeat(0, 99).Select(x => new Vector(0, 0, 0)).ToArray();
 
     // Constructor
-    internal Map(string Name, TimerDatabase DB)
+    public Map(string Name, TimerDatabase database)
     {
         // Set map name
         this.Name = Name;
@@ -186,7 +188,8 @@ internal class Map
             $"[CS2 Surf] Identifying start zone: {this.StartZone.X},{this.StartZone.Y},{this.StartZone.Z}\nIdentifying end zone: {this.EndZone.X},{this.EndZone.Y},{this.EndZone.Z}");
 
         // Gather map information OR create entry
-        Task<MySqlDataReader> reader = DB.Query($"SELECT * FROM Maps WHERE name='{MySqlHelper.EscapeString(Name)}'");
+        Task<MySqlDataReader> reader =
+            database.Query($"SELECT * FROM Maps WHERE name='{MySqlHelper.EscapeString(Name)}'");
         MySqlDataReader mapData = reader.Result;
         bool updateData = false;
         if (mapData.HasRows &&
@@ -209,7 +212,7 @@ internal class Map
         else
         {
             mapData.Close();
-            Task<int> writer = DB.Write(
+            Task<int> writer = database.Write(
                 $"INSERT INTO Maps (name, tier, author, stages, bonuses, ranked, date_added, last_played) VALUES ('{MySqlHelper.EscapeString(Name)}', {this.Tier},  'Unknown', {this.Stages}, {this.Bonuses}, 0, {(int)DateTimeOffset.UtcNow.ToUnixTimeSeconds()}, {(int)DateTimeOffset.UtcNow.ToUnixTimeSeconds()})");
             int writerRows = writer.Result;
             if (writerRows != 1)
@@ -218,7 +221,7 @@ internal class Map
             writer.Dispose();
 
             Task<MySqlDataReader> postWriteReader =
-                DB.Query($"SELECT * FROM Maps WHERE name='{MySqlHelper.EscapeString(Name)}'");
+                database.Query($"SELECT * FROM Maps WHERE name='{MySqlHelper.EscapeString(Name)}'");
             MySqlDataReader postWriteMapData = postWriteReader.Result;
             if (postWriteMapData.HasRows && postWriteMapData.Read())
             {
@@ -248,7 +251,7 @@ internal class Map
         Console.WriteLine($"CS2 Surf ERROR >> OnRoundStart -> update Map() -> Update MapData: {query}");
 #endif
 
-        Task<int> updater = DB.Write(query);
+        Task<int> updater = database.Write(query);
         int lastPlayedUpdateRows = updater.Result;
         if (lastPlayedUpdateRows != 1)
             throw new Exception(
@@ -256,7 +259,7 @@ internal class Map
         updater.Dispose();
 
         // Initiates getting the World Records for the map
-        GetMapRecordAndTotals(DB); // To-do: Implement styles
+        GetMapRecordAndTotals(database); // To-do: Implement styles
 
         this.ReplayBots[0].Stat_MapTimeID = this.WR[0].ID; // Sets WrIndex to WR maptime_id
         if (this.Stages > 0) // If stages map adds bot

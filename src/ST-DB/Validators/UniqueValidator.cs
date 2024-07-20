@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace SurfTimer.Validators;
+namespace SurfTimer.ST_DB.Validators;
 
 public class UniqueValidator : ValidationAttribute
 {

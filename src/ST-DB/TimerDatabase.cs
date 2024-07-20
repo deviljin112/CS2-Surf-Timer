@@ -1,36 +1,34 @@
 using System.ComponentModel;
-using SurfTimer.Models;
 using System.ComponentModel.DataAnnotations;
 using System.Reflection;
-using SurfTimer.Validators;
-// https://dev.mysql.com/doc/connector-net/en/connector-net-connections-string.html
-using MySqlConnector; 
+using Microsoft.Extensions.Logging;
+using MySqlConnector;
+using SurfTimer.ST_DB.Models;
+using SurfTimer.ST_DB.Validators;
 
-namespace SurfTimer;
+namespace SurfTimer.ST_DB;
 
-// This will have functions for DB access and query sending
-internal class TimerDatabase
+public class TimerDatabase
 {
-    private readonly MySqlConnection? _db;
-    private readonly string _connString = string.Empty;
+    private readonly ILogger<TimerDatabase> _logger;
+    private MySqlConnection? _db;
 
-    public TimerDatabase()
+    public TimerDatabase(ILogger<TimerDatabase> logger)
     {
-        // Null'd
+        _logger = logger;
     }
 
-
-    public TimerDatabase(string host, string database, string user, string password, int port, int timeout)
+    public void Configure(string host, string database, string user, string password, int port, int timeout)
     {
-        this._connString = $"server={host};user={user};password={password};database={database};port={port};connect timeout={timeout};";
-        this._db = new MySqlConnection(this._connString);
-        this._db.Open();
+        var connString = $"server={host};user={user};password={password};database={database};port={port};connect timeout={timeout};";
+        _db = new MySqlConnection(connString);
+        _db.Open();
     }
 
     public void Close()
     {
-        if (this._db != null)
-            this._db!.Close();
+        if (_db != null)
+            _db!.Close();
     }
 
     public async Task<MySqlDataReader> Query(string query)
@@ -39,19 +37,19 @@ internal class TimerDatabase
         {
             try
             {
-                if (this._db == null)
+                if (_db == null)
                 {
                     throw new InvalidOperationException("Database connection is not open.");
                 }
 
-                MySqlCommand cmd = new(query, this._db);
+                MySqlCommand cmd = new(query, _db);
                 MySqlDataReader reader = await cmd.ExecuteReaderAsync();
 
                 return reader;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error executing query: {ex.Message}");
+                _logger.LogError($"Error executing query: {ex.Message}");
                 throw;
             }
         });
@@ -63,19 +61,19 @@ internal class TimerDatabase
         {
             try
             {
-                if (this._db == null)
+                if (_db == null)
                 {
                     throw new InvalidOperationException("Database connection is not open.");
                 }
 
-                MySqlCommand cmd = new(query, this._db);
+                MySqlCommand cmd = new(query, _db);
                 int rowsAffected = await cmd.ExecuteNonQueryAsync();
 
                 return rowsAffected;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error executing write operation: {ex.Message}");
+                _logger.LogError($"Error executing write operation: {ex.Message}");
                 throw;
             }
         });

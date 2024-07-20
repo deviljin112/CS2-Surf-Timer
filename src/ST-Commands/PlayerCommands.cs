@@ -1,91 +1,128 @@
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Modules.Commands;
-using CounterStrikeSharp.API.Modules.Admin;
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Modules.Utils;
+using Microsoft.Extensions.Logging;
+using SurfTimer.ST_Game;
+using SurfTimer.ST_Player;
+using SurfTimer.ST_Player.Replay;
+using SurfTimer.ST_Player.Saveloc;
 
-namespace SurfTimer;
+namespace SurfTimer.ST_Commands;
 
-public partial class SurfTimer
+public class PlayerCommands
 {
-    [ConsoleCommand("css_r", "Reset back to the start of the map.")]
+    private readonly ILogger<SurfTimer> _logger;
+    private readonly SurfTimer _plugin;
+    private readonly GameManager _gameManager;
+
+    public PlayerCommands(ILogger<SurfTimer> logger, SurfTimer plugin, GameManager gameManager)
+    {
+        _logger = logger;
+        _plugin = plugin;
+        _gameManager = gameManager;
+    }
+
+    public void Init()
+    {
+        _plugin.AddCommand("css_r", "Reset back to the start of the map.", PlayerReset);
+        _plugin.AddCommand("css_rs", "Reset back to the start of the stage or bonus you're in.", PlayerResetStage);
+        _plugin.AddCommand("css_s", "Teleport to a stage", PlayerGoToStage);
+        _plugin.AddCommand("css_spec", "Moves a player automaticlly into spectator mode", MovePlayerToSpectator);
+        _plugin.AddCommand("css_replaybotpause", "Pause the replay bot playback", PauseReplay);
+        _plugin.AddCommand("css_rbpause", "Pause the replay bot playback", PauseReplay);
+        _plugin.AddCommand("css_replaybotflip", "Flips the replay bot between Forward/Backward playback", ReverseReplay);
+        _plugin.AddCommand("css_rbflip", "Flips the replay bot between Forward/Backward playback", ReverseReplay);
+        _plugin.AddCommand("css_pbreplay", "Allows for replay of player's PB", PbReplay);
+        _plugin.AddCommand("css_saveloc", "Save current player location to be practiced", SavePlayerLocation);
+        _plugin.AddCommand("css_tele", "Teleport player to current saved location", TeleportPlayerLocation);
+        _plugin.AddCommand("css_teleprev", "Teleport player to previous saved location", TeleportPlayerLocationPrev);
+        _plugin.AddCommand("css_telenext", "Teleport player to next saved location", TeleportPlayerLocationNext);
+    }
+    
     [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
-    public void PlayerReset(CCSPlayerController? player, CommandInfo command)
+    private void PlayerReset(CCSPlayerController? player, CommandInfo command)
     {
         if (player == null)
             return;
 
         // To-do: players[userid].Timer.Reset() -> teleport player
-        playerList[player.UserId ?? 0].Timer.Reset();
-        if (CurrentMap.StartZone != new Vector(0, 0, 0))
-            Server.NextFrame(() => player.PlayerPawn.Value!.Teleport(CurrentMap.StartZone, new QAngle(0, 0, 0), new Vector(0, 0, 0)));
+        _gameManager.PlayerList[player.UserId ?? 0].Timer.Reset();
+        if (_gameManager.CurrentMap.StartZone != new Vector(0, 0, 0))
+            Server.NextFrame(() =>
+                player.PlayerPawn.Value!.Teleport(_gameManager.CurrentMap.StartZone, new QAngle(0, 0, 0), new Vector(0, 0, 0)));
         return;
     }
 
-    [ConsoleCommand("css_rs", "Reset back to the start of the stage or bonus you're in.")]
     [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
-    public void PlayerResetStage(CCSPlayerController? player, CommandInfo command)
+    private void PlayerResetStage(CCSPlayerController? player, CommandInfo command)
     {
         if (player == null)
             return;
 
         // To-do: players[userid].Timer.Reset() -> teleport player
-        Player SurfPlayer = playerList[player.UserId ?? 0];
-        if (SurfPlayer.Timer.Stage != 0 && CurrentMap.StageStartZone[SurfPlayer.Timer.Stage] != new Vector(0, 0, 0))
-            Server.NextFrame(() => player.PlayerPawn.Value!.Teleport(CurrentMap.StageStartZone[SurfPlayer.Timer.Stage], CurrentMap.StageStartZoneAngles[SurfPlayer.Timer.Stage], new Vector(0, 0, 0)));
+        Player SurfPlayer = _gameManager.PlayerList[player.UserId ?? 0];
+        if (SurfPlayer.Timer.Stage != 0 && _gameManager.CurrentMap.StageStartZone[SurfPlayer.Timer.Stage] != new Vector(0, 0, 0))
+            Server.NextFrame(() => player.PlayerPawn.Value!.Teleport(_gameManager.CurrentMap.StageStartZone[SurfPlayer.Timer.Stage],
+                _gameManager.CurrentMap.StageStartZoneAngles[SurfPlayer.Timer.Stage], new Vector(0, 0, 0)));
         else // Reset back to map start
-            Server.NextFrame(() => player.PlayerPawn.Value!.Teleport(CurrentMap.StartZone, new QAngle(0, 0, 0), new Vector(0, 0, 0)));
+            Server.NextFrame(() =>
+                player.PlayerPawn.Value!.Teleport(_gameManager.CurrentMap.StartZone, new QAngle(0, 0, 0), new Vector(0, 0, 0)));
         return;
     }
 
-    [ConsoleCommand("css_s", "Teleport to a stage")]
     [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
-    public void PlayerGoToStage(CCSPlayerController? player, CommandInfo command)
+    private void PlayerGoToStage(CCSPlayerController? player, CommandInfo command)
     {
         if (player == null)
             return;
 
         int stage = Int32.Parse(command.ArgByIndex(1)) - 1;
-        if (stage > CurrentMap.Stages - 1 && CurrentMap.Stages > 0)
-            stage = CurrentMap.Stages - 1;
+        if (stage > _gameManager.CurrentMap.Stages - 1 && _gameManager.CurrentMap.Stages > 0)
+            stage = _gameManager.CurrentMap.Stages - 1;
 
         // Must be 1 argument
         if (command.ArgCount < 2 || stage < 0)
         {
-            #if DEBUG
-            player.PrintToChat($"CS2 Surf DEBUG >> css_s >> Arg#: {command.ArgCount} >> Args: {Int32.Parse(command.ArgByIndex(1))}");
-            #endif
+#if DEBUG
+            player.PrintToChat(
+                $"CS2 Surf DEBUG >> css_s >> Arg#: {command.ArgCount} >> Args: {Int32.Parse(command.ArgByIndex(1))}");
+#endif
 
-            player.PrintToChat($"{PluginPrefix} {ChatColors.Red}Invalid arguments. Usage: {ChatColors.Green}!s <stage>");
+            player.PrintToChat(
+                $"{_gameManager.PluginPrefix} {ChatColors.Red}Invalid arguments. Usage: {ChatColors.Green}!s <stage>");
             return;
         }
-        else if (CurrentMap.Stages <= 0)
+        else if (_gameManager.CurrentMap.Stages <= 0)
         {
-            player.PrintToChat($"{PluginPrefix} {ChatColors.Red}This map has no stages.");
+            player.PrintToChat($"{_gameManager.PluginPrefix} {ChatColors.Red}This map has no stages.");
             return;
         }
 
-        if (CurrentMap.StageStartZone[stage] != new Vector(0, 0, 0))
+        if (_gameManager.CurrentMap.StageStartZone[stage] != new Vector(0, 0, 0))
         {
             if (stage == 0)
-                Server.NextFrame(() => player.PlayerPawn.Value!.Teleport(CurrentMap.StartZone, CurrentMap.StartZoneAngles, new Vector(0, 0, 0)));
+                Server.NextFrame(() =>
+                    player.PlayerPawn.Value!.Teleport(_gameManager.CurrentMap.StartZone, _gameManager.CurrentMap.StartZoneAngles,
+                        new Vector(0, 0, 0)));
             else
-                Server.NextFrame(() => player.PlayerPawn.Value!.Teleport(CurrentMap.StageStartZone[stage], CurrentMap.StageStartZoneAngles[stage], new Vector(0, 0, 0)));
+                Server.NextFrame(() => player.PlayerPawn.Value!.Teleport(_gameManager.CurrentMap.StageStartZone[stage],
+                    _gameManager.CurrentMap.StageStartZoneAngles[stage], new Vector(0, 0, 0)));
 
-            playerList[player.UserId ?? 0].Timer.Reset();
-            playerList[player.UserId ?? 0].Timer.IsStageMode = true;
+            _gameManager.PlayerList[player.UserId ?? 0].Timer.Reset();
+            _gameManager.PlayerList[player.UserId ?? 0].Timer.IsStageMode = true;
 
             // To-do: If you run this while you're in the start zone, endtouch for the start zone runs after you've teleported
             //        causing the timer to start. This needs to be fixed.
         }
 
         else
-            player.PrintToChat($"{PluginPrefix} {ChatColors.Red}Invalid stage provided. Usage: {ChatColors.Green}!s <stage>");
+            player.PrintToChat(
+                $"{_gameManager.PluginPrefix} {ChatColors.Red}Invalid stage provided. Usage: {ChatColors.Green}!s <stage>");
     }
 
-    [ConsoleCommand("css_spec", "Moves a player automaticlly into spectator mode")]
-    public void MovePlayerToSpectator(CCSPlayerController? player, CommandInfo command)
+    private void MovePlayerToSpectator(CCSPlayerController? player, CommandInfo command)
     {
         if (player == null || player.Team == CsTeam.Spectator)
             return;
@@ -98,94 +135,92 @@ public partial class SurfTimer
         Reaplay Commands
     #########################
     */
-    [ConsoleCommand("css_replaybotpause", "Pause the replay bot playback")]
-    [ConsoleCommand("css_rbpause", "Pause the replay bot playback")]
-    public void PauseReplay(CCSPlayerController? player, CommandInfo command)
+    private void PauseReplay(CCSPlayerController? player, CommandInfo command)
     {
-        if(player == null || player.Team != CsTeam.Spectator)
+        if (player == null || player.Team != CsTeam.Spectator)
             return;
 
-        foreach(ReplayPlayer rb in CurrentMap.ReplayBots)
+        foreach (ReplayPlayer rb in _gameManager.CurrentMap.ReplayBots)
         {
-            if(!rb.IsPlayable || !rb.IsPlaying || !playerList[player.UserId ?? 0].IsSpectating(rb.Controller!))
+            if (!rb.IsPlayable || !rb.IsPlaying || !_gameManager.PlayerList[player.UserId ?? 0].IsSpectating(rb.Controller!))
                 continue;
-            
+
             rb.Pause();
         }
     }
 
-    [ConsoleCommand("css_replaybotflip", "Flips the replay bot between Forward/Backward playback")]
-    [ConsoleCommand("css_rbflip", "Flips the replay bot between Forward/Backward playback")]
-    public void ReverseReplay(CCSPlayerController? player, CommandInfo command)
+    private void ReverseReplay(CCSPlayerController? player, CommandInfo command)
     {
-        if(player == null || player.Team != CsTeam.Spectator)
+        if (player == null || player.Team != CsTeam.Spectator)
             return;
 
-        foreach(ReplayPlayer rb in CurrentMap.ReplayBots)
+        foreach (ReplayPlayer rb in _gameManager.CurrentMap.ReplayBots)
         {
-            if(!rb.IsPlayable || !rb.IsPlaying || !playerList[player.UserId ?? 0].IsSpectating(rb.Controller!))
+            if (!rb.IsPlayable || !rb.IsPlaying || !_gameManager.PlayerList[player.UserId ?? 0].IsSpectating(rb.Controller!))
                 continue;
-            
+
             rb.FrameTickIncrement *= -1;
         }
     }
 
-    [ConsoleCommand("css_pbreplay", "Allows for replay of player's PB")]
-    public void PbReplay(CCSPlayerController? player, CommandInfo command)
+    private void PbReplay(CCSPlayerController? player, CommandInfo command)
     {
-        if(player == null)
+        if (player == null)
             return;
 
-        int maptime_id = playerList[player!.UserId ?? 0].Stats.PB[playerList[player.UserId ?? 0].Timer.Style].ID;
+        int maptime_id = _gameManager.PlayerList[player!.UserId ?? 0].Stats.PB[_gameManager.PlayerList[player.UserId ?? 0].Timer.Style].ID;
         if (command.ArgCount > 1)
         {
             try
             {
                 maptime_id = int.Parse(command.ArgByIndex(1));
             }
-            catch {}
+            catch
+            {
+            }
         }
 
-        if(maptime_id == -1 || !CurrentMap.ConnectedMapTimes.Contains(maptime_id))
+        if (maptime_id == -1 || !_gameManager.CurrentMap.ConnectedMapTimes.Contains(maptime_id))
         {
-            player.PrintToChat($"{PluginPrefix} {ChatColors.Red}No time was found");
+            player.PrintToChat($"{_gameManager.PluginPrefix} {ChatColors.Red}No time was found");
             return;
         }
         
-        for(int i = 0; i < CurrentMap.ReplayBots.Count; i++)
+        Console.WriteLine($"[CS2 SURF] Replay Bot: {_gameManager.CurrentMap.ReplayBots}");
+        Console.WriteLine($"[CS2 SURF] Replay Bot Count: {_gameManager.CurrentMap.ReplayBots.Count}");
+        
+        for (int i = 0; i < _gameManager.CurrentMap.ReplayBots.Count; i++)
         {
-            if(CurrentMap.ReplayBots[i].Stat_MapTimeID == maptime_id)
+            if (_gameManager.CurrentMap.ReplayBots[i].Stat_MapTimeID == maptime_id)
             {
-                player.PrintToChat($"{PluginPrefix} {ChatColors.Red}A bot of this run already playing");
+                player.PrintToChat($"{_gameManager.PluginPrefix} {ChatColors.Red}A bot of this run already playing");
                 return;
             }
         }
 
-        CurrentMap.ReplayBots = CurrentMap.ReplayBots.Prepend(new ReplayPlayer() {
+        _gameManager.CurrentMap.ReplayBots = _gameManager.CurrentMap.ReplayBots.Prepend(new ReplayPlayer()
+        {
             Stat_MapTimeID = maptime_id,
             Stat_Prefix = "PB"
         }).ToList();
 
-        Server.NextFrame(() => {
-            Server.ExecuteCommand($"bot_quota {CurrentMap.ReplayBots.Count}");
-        });
+        Server.NextFrame(() => { Server.ExecuteCommand($"bot_quota {_gameManager.CurrentMap.ReplayBots.Count}"); });
     }
 
-        /*
-    ########################
-        Saveloc Commands
-    ########################
-    */
-    [ConsoleCommand("css_saveloc", "Save current player location to be practiced")]
-    public void SavePlayerLocation(CCSPlayerController? player, CommandInfo command)
+    /*
+########################
+    Saveloc Commands
+########################
+*/
+    private void SavePlayerLocation(CCSPlayerController? player, CommandInfo command)
     {
-        if(player == null || !player.PawnIsAlive || !playerList.ContainsKey(player.UserId ?? 0))
+        if (player == null || !player.PawnIsAlive || !_gameManager.PlayerList.ContainsKey(player.UserId ?? 0))
             return;
 
-        Player p = playerList[player.UserId ?? 0];
+        Player p = _gameManager.PlayerList[player.UserId ?? 0];
         if (!p.Timer.IsRunning)
         {
-            p.Controller.PrintToChat($"{PluginPrefix} {ChatColors.Red}Cannot save location while not in run");
+            p.Controller.PrintToChat($"{_gameManager.PluginPrefix} {ChatColors.Red}Cannot save location while not in run");
             return;
         }
 
@@ -193,74 +228,78 @@ public partial class SurfTimer
         var player_angle = p.Controller.PlayerPawn.Value!.EyeAngles;
         var player_velocity = p.Controller.PlayerPawn.Value!.AbsVelocity;
 
-        p.SavedLocations.Add(new SavelocFrame {
+        p.SavedLocations.Add(new SavelocFrame
+        {
             Pos = new Vector(player_pos.X, player_pos.Y, player_pos.Z),
             Ang = new QAngle(player_angle.X, player_angle.Y, player_angle.Z),
             Vel = new Vector(player_velocity.X, player_velocity.Y, player_velocity.Z),
             Tick = p.Timer.Ticks
         });
-        p.CurrentSavedLocation = p.SavedLocations.Count-1;
+        p.CurrentSavedLocation = p.SavedLocations.Count - 1;
 
-        p.Controller.PrintToChat($"{PluginPrefix} {ChatColors.Green}Saved location! {ChatColors.Default} use !tele {p.SavedLocations.Count-1} to teleport to this location");
+        p.Controller.PrintToChat(
+            $"{_gameManager.PluginPrefix} {ChatColors.Green}Saved location! {ChatColors.Default} use !tele {p.SavedLocations.Count - 1} to teleport to this location");
     }
 
-    [ConsoleCommand("css_tele", "Teleport player to current saved location")]
-    public void TeleportPlayerLocation(CCSPlayerController? player, CommandInfo command)
+    private void TeleportPlayerLocation(CCSPlayerController? player, CommandInfo command)
     {
-        if(player == null || !player.PawnIsAlive || !playerList.ContainsKey(player.UserId ?? 0))
+        if (player == null || !player.PawnIsAlive || !_gameManager.PlayerList.ContainsKey(player.UserId ?? 0))
             return;
 
-        Player p = playerList[player.UserId ?? 0];
+        Player p = _gameManager.PlayerList[player.UserId ?? 0];
 
-        if(p.SavedLocations.Count == 0)
+        if (p.SavedLocations.Count == 0)
         {
-            p.Controller.PrintToChat($"{PluginPrefix} {ChatColors.Red}No saved locations");
+            p.Controller.PrintToChat($"{_gameManager.PluginPrefix} {ChatColors.Red}No saved locations");
             return;
         }
 
-        if(!p.Timer.IsRunning)
+        if (!p.Timer.IsRunning)
             p.Timer.Start();
 
         if (!p.Timer.IsPracticeMode)
         {
-            p.Controller.PrintToChat($"{PluginPrefix} {ChatColors.Red}Timer now on practice");
+            p.Controller.PrintToChat($"{_gameManager.PluginPrefix} {ChatColors.Red}Timer now on practice");
             p.Timer.IsPracticeMode = true;
         }
 
-        if(command.ArgCount > 1)
+        if (command.ArgCount > 1)
             try
             {
                 int tele_n = int.Parse(command.ArgByIndex(1));
                 if (tele_n < p.SavedLocations.Count)
                     p.CurrentSavedLocation = tele_n;
             }
-            catch { }
+            catch
+            {
+            }
+
         SavelocFrame location = p.SavedLocations[p.CurrentSavedLocation];
-        Server.NextFrame(() => {
+        Server.NextFrame(() =>
+        {
             p.Controller.PlayerPawn.Value!.Teleport(location.Pos, location.Ang, location.Vel);
             p.Timer.Ticks = location.Tick;
         });
 
-        p.Controller.PrintToChat($"{PluginPrefix} Teleported #{p.CurrentSavedLocation}");
+        p.Controller.PrintToChat($"{_gameManager.PluginPrefix} Teleported #{p.CurrentSavedLocation}");
     }
 
-    [ConsoleCommand("css_teleprev", "Teleport player to previous saved location")]
-    public void TeleportPlayerLocationPrev(CCSPlayerController? player, CommandInfo command)
+    private void TeleportPlayerLocationPrev(CCSPlayerController? player, CommandInfo command)
     {
-        if(player == null || !player.PawnIsAlive || !playerList.ContainsKey(player.UserId ?? 0))
+        if (player == null || !player.PawnIsAlive || !_gameManager.PlayerList.ContainsKey(player.UserId ?? 0))
             return;
 
-        Player p = playerList[player.UserId ?? 0];
+        Player p = _gameManager.PlayerList[player.UserId ?? 0];
 
-        if(p.SavedLocations.Count == 0)
+        if (p.SavedLocations.Count == 0)
         {
-            p.Controller.PrintToChat($"{PluginPrefix} {ChatColors.Red}No saved locations");
+            p.Controller.PrintToChat($"{_gameManager.PluginPrefix} {ChatColors.Red}No saved locations");
             return;
         }
 
-        if(p.CurrentSavedLocation == 0)
+        if (p.CurrentSavedLocation == 0)
         {
-            p.Controller.PrintToChat($"{PluginPrefix} {ChatColors.Red}Already at first location");
+            p.Controller.PrintToChat($"{_gameManager.PluginPrefix} {ChatColors.Red}Already at first location");
         }
         else
         {
@@ -269,26 +308,25 @@ public partial class SurfTimer
 
         TeleportPlayerLocation(player, command);
 
-        p.Controller.PrintToChat($"{PluginPrefix} Teleported #{p.CurrentSavedLocation}");
+        p.Controller.PrintToChat($"{_gameManager.PluginPrefix} Teleported #{p.CurrentSavedLocation}");
     }
 
-    [ConsoleCommand("css_telenext", "Teleport player to next saved location")]
-    public void TeleportPlayerLocationNext(CCSPlayerController? player, CommandInfo command)
+    private void TeleportPlayerLocationNext(CCSPlayerController? player, CommandInfo command)
     {
-        if(player == null || !player.PawnIsAlive || !playerList.ContainsKey(player.UserId ?? 0))
+        if (player == null || !player.PawnIsAlive || !_gameManager.PlayerList.ContainsKey(player.UserId ?? 0))
             return;
 
-        Player p = playerList[player.UserId ?? 0];
+        Player p = _gameManager.PlayerList[player.UserId ?? 0];
 
-        if(p.SavedLocations.Count == 0)
+        if (p.SavedLocations.Count == 0)
         {
-            p.Controller.PrintToChat($"{PluginPrefix} {ChatColors.Red}No saved locations");
+            p.Controller.PrintToChat($"{_gameManager.PluginPrefix} {ChatColors.Red}No saved locations");
             return;
         }
 
-        if(p.CurrentSavedLocation == p.SavedLocations.Count-1)
+        if (p.CurrentSavedLocation == p.SavedLocations.Count - 1)
         {
-            p.Controller.PrintToChat($"{PluginPrefix} {ChatColors.Red}Already at last location");
+            p.Controller.PrintToChat($"{_gameManager.PluginPrefix} {ChatColors.Red}Already at last location");
         }
         else
         {
@@ -297,6 +335,6 @@ public partial class SurfTimer
 
         TeleportPlayerLocation(player, command);
 
-        p.Controller.PrintToChat($"{PluginPrefix} Teleported #{p.CurrentSavedLocation}");
+        p.Controller.PrintToChat($"{_gameManager.PluginPrefix} Teleported #{p.CurrentSavedLocation}");
     }
 }
