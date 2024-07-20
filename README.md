@@ -1,7 +1,9 @@
 # CS2 Surf Timer Fork
-This is a fork of the https://github.com/CS2Surf/Timer CS2 Surf Timer.
 
-# Road Map
+> [!NOTE]
+> This is a fork of the https://github.com/CS2Surf/Timer CS2 Surf Timer.
+
+## Road Map
 [Original Repo's](https://github.com/CS2Surf/Timer) road map extended with what the fork achieved / wants to achieve.
 
 - [x] Database
